@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { saveToFirebase, loadFromFirebase } from './firebase';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -236,6 +237,11 @@ export default function LifeManager() {
   const [viewingDate, setViewingDate] = useState(new Date());
   const [expandedIdea, setExpandedIdea] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
+  const [syncCode, setSyncCode] = useState(() => loadFromStorage('lm_syncCode_v11', ''));
+  const [syncCodeInput, setSyncCodeInput] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [lastSynced, setLastSynced] = useState(() => loadFromStorage('lm_lastSynced_v11', null));
   const [collapsedSections, setCollapsedSections] = useState({ habits: false, tasks: false, sleep: true, fact: true });
 
 
@@ -434,6 +440,104 @@ export default function LifeManager() {
       } catch { setImportStatus({ type: 'error', message: 'Failed to parse file' }); setTimeout(() => setImportStatus(null), 3000); }
     };
     reader.readAsText(file);
+  }, []);
+
+  // Save syncCode to localStorage when it changes
+  useEffect(() => { saveToStorage('lm_syncCode_v11', syncCode); }, [syncCode]);
+  useEffect(() => { saveToStorage('lm_lastSynced_v11', lastSynced); }, [lastSynced]);
+
+  // Sync functions
+  const syncToCloud = useCallback(async () => {
+    if (!syncCode) return;
+    setIsSyncing(true);
+    setSyncStatus(null);
+    try {
+      const data = { version: 'v11', habits, tasks, goals, ideas, dailyLogs, scores };
+      await saveToFirebase(syncCode, data);
+      const now = new Date().toISOString();
+      setLastSynced(now);
+      setSyncStatus({ type: 'success', message: 'Data synced to cloud!' });
+      setTimeout(() => setSyncStatus(null), 3000);
+    } catch (err) {
+      console.error('Sync error:', err);
+      setSyncStatus({ type: 'error', message: 'Failed to sync. Check connection.' });
+      setTimeout(() => setSyncStatus(null), 3000);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [syncCode, habits, tasks, goals, ideas, dailyLogs, scores]);
+
+  const syncFromCloud = useCallback(async () => {
+    if (!syncCode) return;
+    setIsSyncing(true);
+    setSyncStatus(null);
+    try {
+      const data = await loadFromFirebase(syncCode);
+      if (data) {
+        if (data.habits) setHabits(data.habits);
+        if (data.tasks) setTasks(data.tasks);
+        if (data.goals) setGoals(data.goals);
+        if (data.ideas) setIdeas(data.ideas);
+        if (data.dailyLogs) setDailyLogs(data.dailyLogs);
+        if (data.scores) setScores(data.scores);
+        setLastSynced(data.lastUpdated || new Date().toISOString());
+        setSyncStatus({ type: 'success', message: 'Data loaded from cloud!' });
+      } else {
+        setSyncStatus({ type: 'error', message: 'No data found for this code.' });
+      }
+      setTimeout(() => setSyncStatus(null), 3000);
+    } catch (err) {
+      console.error('Load error:', err);
+      setSyncStatus({ type: 'error', message: 'Failed to load. Check connection.' });
+      setTimeout(() => setSyncStatus(null), 3000);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [syncCode]);
+
+  const connectSyncCode = useCallback(async () => {
+    if (!syncCodeInput.trim()) return;
+    const code = syncCodeInput.trim().toUpperCase();
+    setIsSyncing(true);
+    setSyncStatus(null);
+    try {
+      const existingData = await loadFromFirebase(code);
+      if (existingData) {
+        // Code exists - load data
+        if (existingData.habits) setHabits(existingData.habits);
+        if (existingData.tasks) setTasks(existingData.tasks);
+        if (existingData.goals) setGoals(existingData.goals);
+        if (existingData.ideas) setIdeas(existingData.ideas);
+        if (existingData.dailyLogs) setDailyLogs(existingData.dailyLogs);
+        if (existingData.scores) setScores(existingData.scores);
+        setSyncCode(code);
+        setLastSynced(existingData.lastUpdated || new Date().toISOString());
+        setSyncStatus({ type: 'success', message: 'Connected! Data loaded from cloud.' });
+      } else {
+        // New code - save current data
+        const data = { version: 'v11', habits, tasks, goals, ideas, dailyLogs, scores };
+        await saveToFirebase(code, data);
+        setSyncCode(code);
+        const now = new Date().toISOString();
+        setLastSynced(now);
+        setSyncStatus({ type: 'success', message: 'New sync code created!' });
+      }
+      setSyncCodeInput('');
+      setTimeout(() => setSyncStatus(null), 3000);
+    } catch (err) {
+      console.error('Connect error:', err);
+      setSyncStatus({ type: 'error', message: 'Connection failed. Try again.' });
+      setTimeout(() => setSyncStatus(null), 3000);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [syncCodeInput, habits, tasks, goals, ideas, dailyLogs, scores]);
+
+  const disconnectSync = useCallback(() => {
+    setSyncCode('');
+    setLastSynced(null);
+    setSyncStatus({ type: 'success', message: 'Disconnected from sync.' });
+    setTimeout(() => setSyncStatus(null), 3000);
   }, []);
 
   // Filtered data
@@ -1122,8 +1226,43 @@ export default function LifeManager() {
       </Modal>
 
       {/* Data Modal */}
-      <Modal isOpen={showDataModal} onClose={() => setShowDataModal(false)} title="💾 Backup & Restore">
-        {importStatus && <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '0.75rem', backgroundColor: importStatus.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: importStatus.type === 'success' ? '#10b981' : '#ef4444', fontSize: '0.875rem' }}>{importStatus.type === 'success' ? '✓' : '✕'} {importStatus.message}</div>}
+      <Modal isOpen={showDataModal} onClose={() => setShowDataModal(false)} title="💾 Backup & Sync">
+        {(importStatus || syncStatus) && <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '0.75rem', backgroundColor: (importStatus?.type || syncStatus?.type) === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: (importStatus?.type || syncStatus?.type) === 'success' ? '#10b981' : '#ef4444', fontSize: '0.875rem' }}>{(importStatus?.type || syncStatus?.type) === 'success' ? '✓' : '✕'} {importStatus?.message || syncStatus?.message}</div>}
+
+        {/* Cloud Sync Section */}
+        <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '0.75rem', border: syncCode ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent' }}>
+          <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9375rem' }}>☁️ Cloud Sync</h3>
+          {syncCode ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.8125rem', color: '#10b981' }}>✓ Connected:</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.875rem', color: '#fafafa', backgroundColor: '#3f3f46', padding: '0.25rem 0.5rem', borderRadius: '0.375rem' }}>{syncCode}</span>
+              </div>
+              {lastSynced && <p style={{ fontSize: '0.75rem', color: '#71717a', marginBottom: '0.75rem' }}>Last synced: {new Date(lastSynced).toLocaleString()}</p>}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <button onClick={syncToCloud} disabled={isSyncing} style={{ ...styles.btn('primary'), flex: 1, opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '...' : '⬆️ Push'}</button>
+                <button onClick={syncFromCloud} disabled={isSyncing} style={{ ...styles.btn(), flex: 1, opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '...' : '⬇️ Pull'}</button>
+              </div>
+              <button onClick={disconnectSync} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}>Disconnect</button>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: '0.8125rem', color: '#71717a', marginBottom: '0.75rem' }}>Enter a personal sync code to backup & sync across devices</p>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  value={syncCodeInput}
+                  onChange={(e) => setSyncCodeInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. NATE-2025"
+                  style={{ ...styles.input, flex: 1, fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase' }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') connectSyncCode(); }}
+                />
+                <button onClick={connectSyncCode} disabled={isSyncing || !syncCodeInput.trim()} style={{ ...styles.btn('primary'), opacity: (isSyncing || !syncCodeInput.trim()) ? 0.7 : 1 }}>{isSyncing ? '...' : 'Connect'}</button>
+              </div>
+            </>
+          )}
+        </div>
+
         <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '0.75rem' }}>
           <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9375rem' }}>📤 Export Data</h3>
           <p style={{ fontSize: '0.8125rem', color: '#71717a', marginBottom: '0.75rem' }}>Download all your data as a backup file</p>
