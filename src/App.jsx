@@ -942,6 +942,39 @@ export default function LifeManager() {
                         </div>
                       </div>
                       <p style={{ textAlign: 'center', color: '#71717a', fontSize: '0.875rem', marginBottom: '1rem' }}>{scores[selectedDay.key].completed}/{scores[selectedDay.key].totalHabits} habits completed</p>
+
+                      {/* Additional day info */}
+                      {(dailyLogs[selectedDay.key]?.sleep?.hoursSlept || dailyLogs[selectedDay.key]?.screenTime || dailyLogs[selectedDay.key]?.factLearned) && (
+                        <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '0.5rem', backgroundColor: 'rgba(39,39,42,0.5)' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                            {dailyLogs[selectedDay.key]?.sleep?.hoursSlept && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                <span style={{ fontSize: '0.875rem' }}>🌙</span>
+                                <span style={{ fontSize: '0.8125rem', color: dailyLogs[selectedDay.key].sleep.hoursSlept >= 7 ? '#10b981' : dailyLogs[selectedDay.key].sleep.hoursSlept >= 5 ? '#f59e0b' : '#ef4444', fontWeight: 500 }}>{dailyLogs[selectedDay.key].sleep.hoursSlept} hrs</span>
+                              </div>
+                            )}
+                            {dailyLogs[selectedDay.key]?.screenTime > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                <span style={{ fontSize: '0.875rem' }}>📱</span>
+                                <span style={{ fontSize: '0.8125rem', color: '#a1a1aa', fontWeight: 500 }}>{dailyLogs[selectedDay.key].screenTime} hrs</span>
+                              </div>
+                            )}
+                          </div>
+                          {dailyLogs[selectedDay.key]?.factLearned && (
+                            <div style={{ marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid #3f3f46' }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.375rem' }}>
+                                <span style={{ fontSize: '0.875rem' }}>📚</span>
+                                <span style={{ fontSize: '0.75rem', color: '#a1a1aa', lineHeight: '1.4' }}>
+                                  {dailyLogs[selectedDay.key].factLearned.length > 50
+                                    ? dailyLogs[selectedDay.key].factLearned.substring(0, 50) + '...'
+                                    : dailyLogs[selectedDay.key].factLearned}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <button onClick={() => { setViewingDate(selectedDay.date); setView('today'); setSelectedDay(null); }} style={{ ...styles.btn('primary'), width: '100%' }}>View Day →</button>
                     </>
                   ) : (
