@@ -1231,19 +1231,25 @@ export default function LifeManager() {
 
         {/* Cloud Sync Section */}
         <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '0.75rem', border: syncCode ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent' }}>
-          <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9375rem' }}>☁️ Cloud Sync</h3>
+          <h3 style={{ fontWeight: 600, marginBottom: '0.75rem', fontSize: '0.9375rem' }}>☁️ Cloud Sync</h3>
           {syncCode ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '0.8125rem', color: '#10b981' }}>✓ Connected:</span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.875rem', color: '#fafafa', backgroundColor: '#3f3f46', padding: '0.25rem 0.5rem', borderRadius: '0.375rem' }}>{syncCode}</span>
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '0.5rem', backgroundColor: '#3f3f46', textAlign: 'center' }}>
+                <p style={{ fontSize: '0.75rem', color: '#a1a1aa', marginBottom: '0.25rem' }}>Your sync code</p>
+                <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', fontWeight: 700, color: '#fafafa', letterSpacing: '0.05em' }}>{syncCode}</p>
+              </div>
+              <div style={{ marginBottom: '1rem', padding: '0.625rem', borderRadius: '0.5rem', backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <p style={{ fontSize: '0.75rem', color: '#60a5fa', margin: 0 }}>💡 Save this code somewhere safe — you'll need it to sync on other devices</p>
               </div>
               {lastSynced && <p style={{ fontSize: '0.75rem', color: '#71717a', marginBottom: '0.75rem' }}>Last synced: {new Date(lastSynced).toLocaleString()}</p>}
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                 <button onClick={syncToCloud} disabled={isSyncing} style={{ ...styles.btn('primary'), flex: 1, opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '...' : '⬆️ Push'}</button>
                 <button onClick={syncFromCloud} disabled={isSyncing} style={{ ...styles.btn(), flex: 1, opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '...' : '⬇️ Pull'}</button>
               </div>
-              <button onClick={disconnectSync} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}>Disconnect</button>
+              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #3f3f46' }}>
+                <button onClick={disconnectSync} style={{ background: 'none', border: 'none', color: '#f59e0b', fontSize: '0.8125rem', cursor: 'pointer', padding: 0, fontWeight: 500 }}>🔄 Change Code</button>
+                <p style={{ fontSize: '0.6875rem', color: '#71717a', marginTop: '0.375rem' }}>Changing your code won't delete local data. Use Manual Backup first if needed.</p>
+              </div>
             </>
           ) : (
             <>
@@ -1263,27 +1269,28 @@ export default function LifeManager() {
           )}
         </div>
 
-        <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '0.75rem' }}>
-          <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9375rem' }}>📤 Export Data</h3>
-          <p style={{ fontSize: '0.8125rem', color: '#71717a', marginBottom: '0.75rem' }}>Download all your data as a backup file</p>
-          <button onClick={exportData} style={{ ...styles.btn('primary'), width: '100%' }}>Download Backup</button>
-        </div>
-        <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '0.75rem' }}>
-          <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9375rem' }}>📥 Import Data</h3>
-          <p style={{ fontSize: '0.8125rem', color: '#71717a', marginBottom: '0.75rem' }}>Restore from a previous backup</p>
-          <label style={{ ...styles.btn(), width: '100%', cursor: 'pointer', display: 'block', textAlign: 'center' }}>
-            Choose File
-            <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) importData(e.target.files[0]); }} />
-          </label>
-        </div>
-        <div style={{ padding: '0.75rem', borderRadius: '0.75rem', backgroundColor: 'rgba(39,39,42,0.5)', fontSize: '0.75rem', color: '#71717a' }}>
+        {/* Data Stats */}
+        <div style={{ padding: '0.75rem', borderRadius: '0.75rem', backgroundColor: 'rgba(39,39,42,0.5)', fontSize: '0.75rem', color: '#71717a', marginBottom: '0.75rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem' }}>
             <span>{habits.length} habits</span><span>{tasks.length} tasks</span>
             <span>{goals.length} goals</span><span>{ideas.length} ideas</span>
             <span>{Object.keys(dailyLogs).length} days logged</span><span>{Object.keys(scores).length} scores</span>
           </div>
         </div>
-        <button onClick={() => setShowDataModal(false)} style={{ ...styles.btn(), width: '100%', marginTop: '1rem' }}>Close</button>
+
+        {/* Manual Backup Section */}
+        <div style={{ padding: '0.75rem', borderRadius: '0.75rem', backgroundColor: 'rgba(39,39,42,0.3)', marginBottom: '0.75rem' }}>
+          <p style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.625rem' }}>Manual Backup</p>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button onClick={exportData} style={{ ...styles.btn(), flex: 1, fontSize: '0.8125rem', minHeight: '40px' }}>📤 Download</button>
+            <label style={{ ...styles.btn(), flex: 1, fontSize: '0.8125rem', minHeight: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              📥 Upload
+              <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) importData(e.target.files[0]); }} />
+            </label>
+          </div>
+        </div>
+
+        <button onClick={() => setShowDataModal(false)} style={{ ...styles.btn(), width: '100%' }}>Close</button>
       </Modal>
 
       {/* Delete Habit Modal */}
