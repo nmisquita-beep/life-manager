@@ -1253,13 +1253,14 @@ export default function LifeManager() {
                 <p style={{ fontSize: '0.75rem', color: '#60a5fa', margin: 0 }}>💡 Save this code somewhere safe — you'll need it to sync on other devices</p>
               </div>
               {lastSynced && <p style={{ fontSize: '0.75rem', color: '#71717a', marginBottom: '0.75rem' }}>Last synced: {new Date(lastSynced).toLocaleString()}</p>}
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <button onClick={syncToCloud} disabled={isSyncing} style={{ ...styles.btn('primary'), flex: 1, opacity: isSyncing ? 0.7 : 1, fontSize: '0.8125rem' }}>{isSyncing ? '...' : '⬆️ Upload to Cloud'}</button>
                 <button onClick={syncFromCloud} disabled={isSyncing} style={{ ...styles.btn(), flex: 1, opacity: isSyncing ? 0.7 : 1, fontSize: '0.8125rem' }}>{isSyncing ? '...' : '⬇️ Download from Cloud'}</button>
               </div>
+              <p style={{ fontSize: '0.6875rem', color: '#a1a1aa', marginBottom: '1rem', lineHeight: '1.4' }}>Data does not sync automatically. Tap "Upload to Cloud" to save your data, or "Download from Cloud" to load data from another device.</p>
               <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #3f3f46' }}>
                 <button onClick={disconnectSync} style={{ background: 'none', border: 'none', color: '#f59e0b', fontSize: '0.8125rem', cursor: 'pointer', padding: 0, fontWeight: 500 }}>🔄 Change Code</button>
-                <p style={{ fontSize: '0.6875rem', color: '#71717a', marginTop: '0.375rem' }}>Changing your code won't delete local data. Use Manual Backup first if needed.</p>
+                <p style={{ fontSize: '0.6875rem', color: '#71717a', marginTop: '0.375rem' }}>Changing your code won't delete local data.</p>
               </div>
             </>
           ) : (
@@ -1287,18 +1288,6 @@ export default function LifeManager() {
             <span>{habits.length} habits</span><span>{tasks.length} tasks</span>
             <span>{goals.length} goals</span><span>{ideas.length} ideas</span>
             <span>{Object.keys(dailyLogs).length} days logged</span><span>{Object.keys(scores).length} scores</span>
-          </div>
-        </div>
-
-        {/* Manual Backup Section */}
-        <div style={{ padding: '0.75rem', borderRadius: '0.75rem', backgroundColor: 'rgba(39,39,42,0.3)', marginBottom: '0.75rem' }}>
-          <p style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.625rem' }}>Manual Backup</p>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={exportData} style={{ ...styles.btn(), flex: 1, fontSize: '0.8125rem', minHeight: '40px' }}>📤 Download</button>
-            <label style={{ ...styles.btn(), flex: 1, fontSize: '0.8125rem', minHeight: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              📥 Upload
-              <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) importData(e.target.files[0]); }} />
-            </label>
           </div>
         </div>
 
