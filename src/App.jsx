@@ -242,9 +242,26 @@ export default function LifeManager() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
   const [lastSynced, setLastSynced] = useState(() => loadFromStorage('lm_lastSynced_v11', null));
+  // Device detection
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  const [showHomeScreenPopup, setShowHomeScreenPopup] = useState(() => {
+    const hasSeenHomeScreen = loadFromStorage('lm_hasSeenHomeScreen_v11', false);
+    const hasSyncCode = loadFromStorage('lm_syncCode_v11', '');
+    // Only show on mobile, for first-time users
+    return isMobile && !hasSeenHomeScreen && !hasSyncCode;
+  });
+
   const [showWelcomeSync, setShowWelcomeSync] = useState(() => {
     const hasSeenWelcome = loadFromStorage('lm_hasSeenWelcome_v11', false);
+    const hasSeenHomeScreen = loadFromStorage('lm_hasSeenHomeScreen_v11', false);
     const hasSyncCode = loadFromStorage('lm_syncCode_v11', '');
+    // On mobile, wait until home screen popup is dismissed; on desktop, show immediately
+    if (isMobile) {
+      return false; // Will be triggered after home screen popup
+    }
     return !hasSeenWelcome && !hasSyncCode;
   });
   const [collapsedSections, setCollapsedSections] = useState({ habits: false, tasks: false, sleep: true, fact: true });
@@ -450,6 +467,17 @@ export default function LifeManager() {
   // Save syncCode to localStorage when it changes
   useEffect(() => { saveToStorage('lm_syncCode_v11', syncCode); }, [syncCode]);
   useEffect(() => { saveToStorage('lm_lastSynced_v11', lastSynced); }, [lastSynced]);
+
+  const dismissHomeScreenPopup = useCallback(() => {
+    setShowHomeScreenPopup(false);
+    saveToStorage('lm_hasSeenHomeScreen_v11', true);
+    // Show the sync popup after dismissing home screen popup
+    const hasSeenWelcome = loadFromStorage('lm_hasSeenWelcome_v11', false);
+    const hasSyncCode = loadFromStorage('lm_syncCode_v11', '');
+    if (!hasSeenWelcome && !hasSyncCode) {
+      setShowWelcomeSync(true);
+    }
+  }, []);
 
   const dismissWelcomeSync = useCallback(() => {
     setShowWelcomeSync(false);
@@ -1325,6 +1353,55 @@ export default function LifeManager() {
         </div>
 
         <button onClick={() => setShowDataModal(false)} style={{ ...styles.btn(), width: '100%' }}>Close</button>
+      </Modal>
+
+      {/* Add to Home Screen Modal */}
+      <Modal isOpen={showHomeScreenPopup} onClose={dismissHomeScreenPopup} title="📱 Add to Home Screen">
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🏠</p>
+          <p style={{ fontSize: '0.9375rem', color: '#fafafa', marginBottom: '0.5rem' }}>Get the full app experience</p>
+          <p style={{ fontSize: '0.8125rem', color: '#71717a' }}>Add Life Manager to your home screen for quick access and a better experience.</p>
+        </div>
+
+        {isIOS ? (
+          <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#fafafa', marginBottom: '0.75rem' }}>For iPhone/iPad (Safari):</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.875rem', color: '#8b5cf6', fontWeight: 600 }}>1.</span>
+                <span style={{ fontSize: '0.8125rem', color: '#a1a1aa' }}>Tap the <strong style={{ color: '#fafafa' }}>Share</strong> button at the bottom (square with arrow ↑)</span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.875rem', color: '#8b5cf6', fontWeight: 600 }}>2.</span>
+                <span style={{ fontSize: '0.8125rem', color: '#a1a1aa' }}>Scroll down and tap <strong style={{ color: '#fafafa' }}>"Add to Home Screen"</strong></span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.875rem', color: '#8b5cf6', fontWeight: 600 }}>3.</span>
+                <span style={{ fontSize: '0.8125rem', color: '#a1a1aa' }}>Tap <strong style={{ color: '#fafafa' }}>"Add"</strong></span>
+              </div>
+            </div>
+          </div>
+        ) : isAndroid ? (
+          <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#fafafa', marginBottom: '0.75rem' }}>For Android (Chrome):</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.875rem', color: '#8b5cf6', fontWeight: 600 }}>1.</span>
+                <span style={{ fontSize: '0.8125rem', color: '#a1a1aa' }}>Tap the <strong style={{ color: '#fafafa' }}>menu icon</strong> (three dots ⋮) in the top right</span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.875rem', color: '#8b5cf6', fontWeight: 600 }}>2.</span>
+                <span style={{ fontSize: '0.8125rem', color: '#a1a1aa' }}>Tap <strong style={{ color: '#fafafa' }}>"Add to Home Screen"</strong> or <strong style={{ color: '#fafafa' }}>"Install App"</strong></span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.875rem', color: '#8b5cf6', fontWeight: 600 }}>3.</span>
+                <span style={{ fontSize: '0.8125rem', color: '#a1a1aa' }}>Tap <strong style={{ color: '#fafafa' }}>"Add"</strong></span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <button onClick={dismissHomeScreenPopup} style={{ ...styles.btn('primary'), width: '100%' }}>Got it</button>
       </Modal>
 
       {/* Welcome Sync Modal */}
