@@ -14,7 +14,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export const saveToFirebase = async (syncCode, data) => {
-  const docRef = doc(db, "users", syncCode.toUpperCase());
+  const docRef = doc(db, "users", syncCode.toLowerCase());
   await setDoc(docRef, {
     ...data,
     lastUpdated: new Date().toISOString()
@@ -22,7 +22,7 @@ export const saveToFirebase = async (syncCode, data) => {
 };
 
 export const loadFromFirebase = async (syncCode) => {
-  const docRef = doc(db, "users", syncCode.toUpperCase());
+  const docRef = doc(db, "users", syncCode.toLowerCase());
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
     return docSnap.data();

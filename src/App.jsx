@@ -242,6 +242,11 @@ export default function LifeManager() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
   const [lastSynced, setLastSynced] = useState(() => loadFromStorage('lm_lastSynced_v11', null));
+  const [showWelcomeSync, setShowWelcomeSync] = useState(() => {
+    const hasSeenWelcome = loadFromStorage('lm_hasSeenWelcome_v11', false);
+    const hasSyncCode = loadFromStorage('lm_syncCode_v11', '');
+    return !hasSeenWelcome && !hasSyncCode;
+  });
   const [collapsedSections, setCollapsedSections] = useState({ habits: false, tasks: false, sleep: true, fact: true });
 
 
@@ -446,6 +451,11 @@ export default function LifeManager() {
   useEffect(() => { saveToStorage('lm_syncCode_v11', syncCode); }, [syncCode]);
   useEffect(() => { saveToStorage('lm_lastSynced_v11', lastSynced); }, [lastSynced]);
 
+  const dismissWelcomeSync = useCallback(() => {
+    setShowWelcomeSync(false);
+    saveToStorage('lm_hasSeenWelcome_v11', true);
+  }, []);
+
   // Sync functions
   const syncToCloud = useCallback(async () => {
     if (!syncCode) return;
@@ -497,7 +507,7 @@ export default function LifeManager() {
 
   const connectSyncCode = useCallback(async () => {
     if (!syncCodeInput.trim()) return;
-    const code = syncCodeInput.trim().toUpperCase();
+    const code = syncCodeInput.trim().toLowerCase();
     setIsSyncing(true);
     setSyncStatus(null);
     try {
@@ -1236,15 +1246,16 @@ export default function LifeManager() {
             <>
               <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '0.5rem', backgroundColor: '#3f3f46', textAlign: 'center' }}>
                 <p style={{ fontSize: '0.75rem', color: '#a1a1aa', marginBottom: '0.25rem' }}>Your sync code</p>
-                <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', fontWeight: 700, color: '#fafafa', letterSpacing: '0.05em' }}>{syncCode}</p>
+                <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', fontWeight: 700, color: '#fafafa', letterSpacing: '0.05em' }}>{syncCode.toUpperCase()}</p>
+                <p style={{ fontSize: '0.6875rem', color: '#71717a', marginTop: '0.375rem' }}>Codes are not case-sensitive</p>
               </div>
               <div style={{ marginBottom: '1rem', padding: '0.625rem', borderRadius: '0.5rem', backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
                 <p style={{ fontSize: '0.75rem', color: '#60a5fa', margin: 0 }}>💡 Save this code somewhere safe — you'll need it to sync on other devices</p>
               </div>
               {lastSynced && <p style={{ fontSize: '0.75rem', color: '#71717a', marginBottom: '0.75rem' }}>Last synced: {new Date(lastSynced).toLocaleString()}</p>}
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                <button onClick={syncToCloud} disabled={isSyncing} style={{ ...styles.btn('primary'), flex: 1, opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '...' : '⬆️ Push'}</button>
-                <button onClick={syncFromCloud} disabled={isSyncing} style={{ ...styles.btn(), flex: 1, opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '...' : '⬇️ Pull'}</button>
+                <button onClick={syncToCloud} disabled={isSyncing} style={{ ...styles.btn('primary'), flex: 1, opacity: isSyncing ? 0.7 : 1, fontSize: '0.8125rem' }}>{isSyncing ? '...' : '⬆️ Upload to Cloud'}</button>
+                <button onClick={syncFromCloud} disabled={isSyncing} style={{ ...styles.btn(), flex: 1, opacity: isSyncing ? 0.7 : 1, fontSize: '0.8125rem' }}>{isSyncing ? '...' : '⬇️ Download from Cloud'}</button>
               </div>
               <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #3f3f46' }}>
                 <button onClick={disconnectSync} style={{ background: 'none', border: 'none', color: '#f59e0b', fontSize: '0.8125rem', cursor: 'pointer', padding: 0, fontWeight: 500 }}>🔄 Change Code</button>
@@ -1254,17 +1265,18 @@ export default function LifeManager() {
           ) : (
             <>
               <p style={{ fontSize: '0.8125rem', color: '#71717a', marginBottom: '0.75rem' }}>Enter a personal sync code to backup & sync across devices</p>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <input
                   type="text"
                   value={syncCodeInput}
                   onChange={(e) => setSyncCodeInput(e.target.value.toUpperCase())}
-                  placeholder="e.g. NATE-2025"
+                  placeholder="e.g. LIFEMANAGER"
                   style={{ ...styles.input, flex: 1, fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase' }}
                   onKeyDown={(e) => { if (e.key === 'Enter') connectSyncCode(); }}
                 />
                 <button onClick={connectSyncCode} disabled={isSyncing || !syncCodeInput.trim()} style={{ ...styles.btn('primary'), opacity: (isSyncing || !syncCodeInput.trim()) ? 0.7 : 1 }}>{isSyncing ? '...' : 'Connect'}</button>
               </div>
+              <p style={{ fontSize: '0.6875rem', color: '#71717a' }}>Codes are not case-sensitive</p>
             </>
           )}
         </div>
@@ -1291,6 +1303,37 @@ export default function LifeManager() {
         </div>
 
         <button onClick={() => setShowDataModal(false)} style={{ ...styles.btn(), width: '100%' }}>Close</button>
+      </Modal>
+
+      {/* Welcome Sync Modal */}
+      <Modal isOpen={showWelcomeSync} onClose={dismissWelcomeSync} title="☁️ Set Up Cloud Sync">
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🔄</p>
+          <p style={{ fontSize: '0.9375rem', color: '#fafafa', marginBottom: '0.5rem' }}>Sync your data across devices</p>
+          <p style={{ fontSize: '0.8125rem', color: '#71717a' }}>Enter a personal code to backup and access your habits, goals, and tasks from anywhere.</p>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <input
+              type="text"
+              value={syncCodeInput}
+              onChange={(e) => setSyncCodeInput(e.target.value.toUpperCase())}
+              placeholder="e.g. LIFEMANAGER"
+              style={{ ...styles.input, flex: 1, fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase' }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && syncCodeInput.trim()) { connectSyncCode(); dismissWelcomeSync(); } }}
+            />
+          </div>
+          <p style={{ fontSize: '0.6875rem', color: '#71717a' }}>Codes are not case-sensitive</p>
+        </div>
+        <button
+          onClick={() => { if (syncCodeInput.trim()) { connectSyncCode(); dismissWelcomeSync(); } }}
+          disabled={isSyncing || !syncCodeInput.trim()}
+          style={{ ...styles.btn('primary'), width: '100%', marginBottom: '0.75rem', opacity: (isSyncing || !syncCodeInput.trim()) ? 0.7 : 1 }}
+        >
+          {isSyncing ? 'Connecting...' : 'Connect'}
+        </button>
+        <button onClick={dismissWelcomeSync} style={{ ...styles.btn(), width: '100%', marginBottom: '1rem' }}>Skip for Now</button>
+        <p style={{ fontSize: '0.75rem', color: '#71717a', textAlign: 'center' }}>You can view or change your code anytime in the Backup menu.</p>
       </Modal>
 
       {/* Delete Habit Modal */}
