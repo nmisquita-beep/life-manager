@@ -266,8 +266,67 @@ export default function LifeManager() {
   });
   const [collapsedSections, setCollapsedSections] = useState({ habits: false, tasks: false, sleep: true, fact: true });
 
+  // Clear/Undo state for sections
+  const [clearState, setClearState] = useState({ habits: null, sleep: null, fact: null }); // stores cleared data for undo
+  const [showUndo, setShowUndo] = useState({ habits: false, sleep: false, fact: false });
+
 
   const toggleSection = (section) => setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
+
+  // Clear section data functions
+  const clearSectionData = useCallback((section) => {
+    const currentLog = dailyLogs[viewingDateKey] || { habitLogs: {}, sleep: {}, screenTime: 0, factLearned: '' };
+
+    if (section === 'habits') {
+      setClearState(prev => ({ ...prev, habits: currentLog.habitLogs }));
+      setDailyLogs(prev => ({
+        ...prev,
+        [viewingDateKey]: { ...prev[viewingDateKey], habitLogs: {} }
+      }));
+    } else if (section === 'sleep') {
+      setClearState(prev => ({ ...prev, sleep: { sleep: currentLog.sleep, screenTime: currentLog.screenTime } }));
+      setDailyLogs(prev => ({
+        ...prev,
+        [viewingDateKey]: { ...prev[viewingDateKey], sleep: {}, screenTime: 0 }
+      }));
+    } else if (section === 'fact') {
+      setClearState(prev => ({ ...prev, fact: currentLog.factLearned }));
+      setDailyLogs(prev => ({
+        ...prev,
+        [viewingDateKey]: { ...prev[viewingDateKey], factLearned: '' }
+      }));
+    }
+
+    setShowUndo(prev => ({ ...prev, [section]: true }));
+
+    // Auto-hide undo after 5 seconds
+    setTimeout(() => {
+      setShowUndo(prev => ({ ...prev, [section]: false }));
+      setClearState(prev => ({ ...prev, [section]: null }));
+    }, 5000);
+  }, [viewingDateKey, dailyLogs]);
+
+  const undoClear = useCallback((section) => {
+    if (section === 'habits' && clearState.habits) {
+      setDailyLogs(prev => ({
+        ...prev,
+        [viewingDateKey]: { ...prev[viewingDateKey], habitLogs: clearState.habits }
+      }));
+    } else if (section === 'sleep' && clearState.sleep) {
+      setDailyLogs(prev => ({
+        ...prev,
+        [viewingDateKey]: { ...prev[viewingDateKey], sleep: clearState.sleep.sleep, screenTime: clearState.sleep.screenTime }
+      }));
+    } else if (section === 'fact' && clearState.fact !== null) {
+      setDailyLogs(prev => ({
+        ...prev,
+        [viewingDateKey]: { ...prev[viewingDateKey], factLearned: clearState.fact }
+      }));
+    }
+
+    setShowUndo(prev => ({ ...prev, [section]: false }));
+    setClearState(prev => ({ ...prev, [section]: null }));
+  }, [viewingDateKey, clearState]);
 
   const todayKey = getDateKey();
   const viewingDateKey = getDateKey(viewingDate);
@@ -748,6 +807,16 @@ export default function LifeManager() {
               </div>
 
               {!collapsedSections.habits && (
+                <>
+                {Object.keys(viewingLog.habitLogs || {}).length > 0 && (
+                  <div style={{ padding: '0 1rem 0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    {showUndo.habits ? (
+                      <button onClick={() => undoClear('habits')} style={{ background: 'none', border: 'none', color: '#f59e0b', fontSize: '0.6875rem', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>↩ Undo</button>
+                    ) : (
+                      <button onClick={() => clearSectionData('habits')} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: '0.6875rem', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>Clear</button>
+                    )}
+                  </div>
+                )}
                 <div style={styles.cardContent}>
                   {applicableHabits.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
@@ -786,6 +855,7 @@ export default function LifeManager() {
                     </div>
                   )}
                 </div>
+                </>
               )}
             </div>
 
@@ -854,6 +924,16 @@ export default function LifeManager() {
               </div>
 
               {!collapsedSections.sleep && (
+                <>
+                {(viewingLog.sleep?.bedTime || viewingLog.sleep?.wakeTime || viewingLog.screenTime > 0) && (
+                  <div style={{ padding: '0 1rem 0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    {showUndo.sleep ? (
+                      <button onClick={() => undoClear('sleep')} style={{ background: 'none', border: 'none', color: '#f59e0b', fontSize: '0.6875rem', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>↩ Undo</button>
+                    ) : (
+                      <button onClick={() => clearSectionData('sleep')} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: '0.6875rem', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>Clear</button>
+                    )}
+                  </div>
+                )}
                 <div style={styles.cardContent}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
                     <div>
@@ -884,6 +964,7 @@ export default function LifeManager() {
                     </div>
                   </div>
                 </div>
+                </>
               )}
             </div>
 
@@ -898,9 +979,20 @@ export default function LifeManager() {
               </div>
 
               {!collapsedSections.fact && (
+                <>
+                {viewingLog.factLearned && (
+                  <div style={{ padding: '0 1rem 0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    {showUndo.fact ? (
+                      <button onClick={() => undoClear('fact')} style={{ background: 'none', border: 'none', color: '#f59e0b', fontSize: '0.6875rem', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>↩ Undo</button>
+                    ) : (
+                      <button onClick={() => clearSectionData('fact')} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: '0.6875rem', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>Clear</button>
+                    )}
+                  </div>
+                )}
                 <div style={styles.cardContent}>
                   <textarea value={viewingLog.factLearned || ''} onChange={(e) => setDailyLogs(prev => ({ ...prev, [viewingDateKey]: { ...prev[viewingDateKey], habitLogs: prev[viewingDateKey]?.habitLogs || {}, factLearned: e.target.value } }))} placeholder="What's something interesting you learned today?" style={{ ...styles.input, minHeight: '5rem', resize: 'none', fontSize: '0.875rem' }} />
                 </div>
+                </>
               )}
             </div>
           </div>
