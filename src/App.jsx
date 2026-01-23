@@ -247,19 +247,19 @@ export default function LifeManager() {
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = /Android/i.test(navigator.userAgent);
 
+  // Standalone mode detection (app added to home screen)
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
   const [showHomeScreenPopup, setShowHomeScreenPopup] = useState(() => {
-    const hasSeenHomeScreen = loadFromStorage('lm_hasSeenHomeScreen_v11', false);
-    const hasSyncCode = loadFromStorage('lm_syncCode_v11', '');
-    // Only show on mobile, for first-time users
-    return isMobile && !hasSeenHomeScreen && !hasSyncCode;
+    // Show on mobile browser, but NOT if already in standalone mode
+    return isMobile && !isStandalone;
   });
 
   const [showWelcomeSync, setShowWelcomeSync] = useState(() => {
     const hasSeenWelcome = loadFromStorage('lm_hasSeenWelcome_v11', false);
-    const hasSeenHomeScreen = loadFromStorage('lm_hasSeenHomeScreen_v11', false);
     const hasSyncCode = loadFromStorage('lm_syncCode_v11', '');
-    // On mobile, wait until home screen popup is dismissed; on desktop, show immediately
-    if (isMobile) {
+    // On mobile browser, wait until home screen popup is dismissed; on desktop or standalone, check normally
+    if (isMobile && !isStandalone) {
       return false; // Will be triggered after home screen popup
     }
     return !hasSeenWelcome && !hasSyncCode;
@@ -470,8 +470,8 @@ export default function LifeManager() {
 
   const dismissHomeScreenPopup = useCallback(() => {
     setShowHomeScreenPopup(false);
-    saveToStorage('lm_hasSeenHomeScreen_v11', true);
-    // Show the sync popup after dismissing home screen popup
+    // Don't save to localStorage - show again next time they open in browser
+    // Show the sync popup after dismissing home screen popup (if first time)
     const hasSeenWelcome = loadFromStorage('lm_hasSeenWelcome_v11', false);
     const hasSyncCode = loadFromStorage('lm_syncCode_v11', '');
     if (!hasSeenWelcome && !hasSyncCode) {
