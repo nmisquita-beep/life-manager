@@ -991,10 +991,10 @@ export default function LifeManager() {
                           {dailyLogs[selectedDay.key]?.factLearned && (
                             <div style={{ marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid #3f3f46' }}>
                               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.375rem' }}>
-                                <span style={{ fontSize: '0.875rem' }}>📚</span>
-                                <span style={{ fontSize: '0.75rem', color: '#a1a1aa', lineHeight: '1.4' }}>
-                                  {dailyLogs[selectedDay.key].factLearned.length > 50
-                                    ? dailyLogs[selectedDay.key].factLearned.substring(0, 50) + '...'
+                                <span style={{ fontSize: '0.875rem', flexShrink: 0 }}>📚</span>
+                                <span style={{ fontSize: '0.75rem', color: '#a1a1aa', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                  {dailyLogs[selectedDay.key].factLearned.length > 100
+                                    ? dailyLogs[selectedDay.key].factLearned.substring(0, 100) + '...'
                                     : dailyLogs[selectedDay.key].factLearned}
                                 </span>
                               </div>
