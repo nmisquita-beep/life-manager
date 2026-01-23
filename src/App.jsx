@@ -12,6 +12,15 @@ const CATEGORIES = {
   LEARNING: { name: 'Learning', color: '#10b981', icon: '📚' },
 };
 
+const HABIT_TEMPLATES = [
+  { icon: '💪', name: 'Exercise', type: 'binary', target: 1, category: 'WORKOUT' },
+  { icon: '💧', name: 'Drink water', type: 'count', target: 8, category: 'SELF_CARE' },
+  { icon: '📖', name: 'Read', type: 'binary', target: 1, category: 'LEARNING' },
+  { icon: '🧘', name: 'Meditate', type: 'binary', target: 1, category: 'SELF_CARE' },
+  { icon: '📝', name: 'Journal', type: 'binary', target: 1, category: 'SELF_CARE' },
+  { icon: '🌅', name: 'Morning routine', type: 'binary', target: 1, category: 'PRODUCTIVITY' },
+];
+
 const defaultHabits = [
   { id: '1', name: 'Eat clean', type: 'count', target: 3, category: 'SELF_CARE', streak: 0, createdAt: '2020-01-01' },
   { id: '2', name: 'Meditation', type: 'binary', target: 1, category: 'SELF_CARE', streak: 0, createdAt: '2020-01-01' },
@@ -270,6 +279,10 @@ export default function LifeManager() {
   const [clearState, setClearState] = useState({ habits: null, sleep: null, fact: null }); // stores cleared data for undo
   const [showUndo, setShowUndo] = useState({ habits: false, sleep: false, fact: false });
 
+  // Derived date keys - must be declared before any useCallbacks that use them
+  const todayKey = getDateKey();
+  const viewingDateKey = getDateKey(viewingDate);
+  const viewingLog = dailyLogs[viewingDateKey] || { habitLogs: {}, sleep: {}, screenTime: 0, factLearned: '' };
 
   const toggleSection = (section) => setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
 
@@ -327,10 +340,6 @@ export default function LifeManager() {
     setShowUndo(prev => ({ ...prev, [section]: false }));
     setClearState(prev => ({ ...prev, [section]: null }));
   }, [viewingDateKey, clearState]);
-
-  const todayKey = getDateKey();
-  const viewingDateKey = getDateKey(viewingDate);
-  const viewingLog = dailyLogs[viewingDateKey] || { habitLogs: {}, sleep: {}, screenTime: 0, factLearned: '' };
 
   const getViewingDateLabel = () => {
     const today = new Date(); const viewing = new Date(viewingDate);
@@ -438,6 +447,31 @@ export default function LifeManager() {
     setDeleteHabitModal(null);
     setDeleteConfirmText('');
   }, [viewingDateKey]);
+
+  // Check if a template habit is already added (by matching name)
+  const isTemplateAdded = useCallback((templateName) => {
+    return habits.some(h => h.name.toLowerCase() === templateName.toLowerCase());
+  }, [habits]);
+
+  // Toggle a template habit - add if not present, remove if present
+  const toggleTemplateHabit = useCallback((template) => {
+    const existingHabit = habits.find(h => h.name.toLowerCase() === template.name.toLowerCase());
+    if (existingHabit) {
+      // Remove the habit
+      setHabits(prev => prev.filter(h => h.id !== existingHabit.id));
+    } else {
+      // Add the habit
+      setHabits(prev => [...prev, {
+        id: generateId(),
+        name: template.name,
+        type: template.type,
+        target: template.target,
+        category: template.category,
+        streak: 0,
+        createdAt: getDateKey()
+      }]);
+    }
+  }, [habits]);
 
   // Goal functions
   const toggleMilestone = useCallback((goalId, milestoneIndex) => {
@@ -819,10 +853,38 @@ export default function LifeManager() {
                 )}
                 <div style={styles.cardContent}>
                   {applicableHabits.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-                      <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎯</p>
-                      <p style={{ color: '#71717a', marginBottom: '1rem' }}>No habits yet</p>
-                      <button onClick={() => setShowAddHabit(true)} style={styles.btn('primary')}>+ Add your first habit</button>
+                    <div style={{ padding: '1.5rem 1rem' }}>
+                      <p style={{ fontSize: '0.8125rem', color: '#a1a1aa', marginBottom: '0.75rem', textAlign: 'center' }}>Tap to add or remove habits</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center', marginBottom: '1rem' }}>
+                        {HABIT_TEMPLATES.map(template => {
+                          const isAdded = isTemplateAdded(template.name);
+                          return (
+                            <button
+                              key={template.name}
+                              onClick={() => toggleTemplateHabit(template)}
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '2rem',
+                                border: isAdded ? '1px solid rgba(16,185,129,0.5)' : '1px solid #3f3f46',
+                                backgroundColor: isAdded ? 'rgba(16,185,129,0.15)' : '#27272a',
+                                color: isAdded ? '#10b981' : '#fafafa',
+                                fontSize: '0.8125rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.375rem',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <span>{isAdded ? '✓' : template.icon}</span>
+                              <span>{template.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <button onClick={() => setShowAddHabit(true)} style={{ ...styles.btn(), fontSize: '0.75rem' }}>+ Custom habit</button>
+                      </div>
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
@@ -1497,34 +1559,64 @@ export default function LifeManager() {
       </Modal>
 
       {/* Welcome Sync Modal */}
-      <Modal isOpen={showWelcomeSync} onClose={dismissWelcomeSync} title="☁️ Set Up Cloud Sync">
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <p style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🔄</p>
-          <p style={{ fontSize: '0.9375rem', color: '#fafafa', marginBottom: '0.5rem' }}>Sync your data across devices</p>
-          <p style={{ fontSize: '0.8125rem', color: '#71717a' }}>Enter a personal code to backup and access your habits, goals, and tasks from anywhere.</p>
+      <Modal isOpen={showWelcomeSync} onClose={dismissWelcomeSync} title="👋 Welcome to Life Manager">
+        {/* Quick Start Habits */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '0.75rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Quick Start Habits</p>
+          <p style={{ fontSize: '0.8125rem', color: '#a1a1aa', marginBottom: '0.75rem' }}>Tap to add or remove habits</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {HABIT_TEMPLATES.map(template => {
+              const isAdded = isTemplateAdded(template.name);
+              return (
+                <button
+                  key={template.name}
+                  onClick={() => toggleTemplateHabit(template)}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '2rem',
+                    border: isAdded ? '1px solid rgba(16,185,129,0.5)' : '1px solid #3f3f46',
+                    backgroundColor: isAdded ? 'rgba(16,185,129,0.15)' : '#27272a',
+                    color: isAdded ? '#10b981' : '#fafafa',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{isAdded ? '✓' : template.icon}</span>
+                  <span>{template.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+
+        {/* Cloud Sync Section */}
+        <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#27272a', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.75rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>☁️ Cloud Sync (Optional)</p>
+          <p style={{ fontSize: '0.8125rem', color: '#a1a1aa', marginBottom: '0.75rem' }}>Enter a code to sync across devices</p>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
             <input
               type="text"
               value={syncCodeInput}
               onChange={(e) => setSyncCodeInput(e.target.value.toUpperCase())}
               placeholder="e.g. LIFEMANAGER"
-              style={{ ...styles.input, flex: 1, fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase' }}
+              style={{ ...styles.input, flex: 1, fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', minHeight: '40px' }}
               onKeyDown={(e) => { if (e.key === 'Enter' && syncCodeInput.trim()) { connectSyncCode(); dismissWelcomeSync(); } }}
             />
+            <button
+              onClick={() => { if (syncCodeInput.trim()) { connectSyncCode(); dismissWelcomeSync(); } }}
+              disabled={isSyncing || !syncCodeInput.trim()}
+              style={{ ...styles.btn('primary'), opacity: (isSyncing || !syncCodeInput.trim()) ? 0.5 : 1 }}
+            >
+              {isSyncing ? '...' : 'Connect'}
+            </button>
           </div>
-          <p style={{ fontSize: '0.6875rem', color: '#71717a' }}>Codes are not case-sensitive</p>
         </div>
-        <button
-          onClick={() => { if (syncCodeInput.trim()) { connectSyncCode(); dismissWelcomeSync(); } }}
-          disabled={isSyncing || !syncCodeInput.trim()}
-          style={{ ...styles.btn('primary'), width: '100%', marginBottom: '0.75rem', opacity: (isSyncing || !syncCodeInput.trim()) ? 0.7 : 1 }}
-        >
-          {isSyncing ? 'Connecting...' : 'Connect'}
-        </button>
-        <button onClick={dismissWelcomeSync} style={{ ...styles.btn(), width: '100%', marginBottom: '1rem' }}>Skip for Now</button>
-        <p style={{ fontSize: '0.75rem', color: '#71717a', textAlign: 'center' }}>You can view or change your code anytime in the Backup menu.</p>
+
+        <button onClick={dismissWelcomeSync} style={{ ...styles.btn('primary'), width: '100%' }}>Get Started</button>
       </Modal>
 
       {/* Delete Habit Modal */}
